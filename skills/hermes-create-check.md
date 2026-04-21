@@ -1,12 +1,30 @@
-# Agent Pulse — Create New Check (Hermes)
+---
+name: agent-pulse-create-check
+version: 1.0.0
+description: Create new check scripts for the Agent Pulse heartbeat framework using the Three-Field Contract
+tags: [agent-pulse, heartbeat, monitoring, check-creation]
+---
 
-You are creating a new check script for the Agent Pulse heartbeat framework.
+# Agent Pulse — Create New Check
 
-## What You'll Receive
-The user will describe what they want to monitor. Create a check script that follows the Three-Field Contract.
+Use this skill when asked to create a new sensor/check for the Agent Pulse heartbeat framework. Generates a Python script following the Three-Field Contract.
+
+## Trigger
+User says something like:
+- "Create a pulse check that monitors X"
+- "Add a new sensor for X"
+- "Write a check script for X"
+- "I want pulse to watch X"
+
+## What You Need from the User
+1. What to monitor (file changes, API health, process status, log patterns, etc.)
+2. What should trigger an alert (threshold, presence/absence, change detection)
+3. Any params that should be configurable via checks.json
 
 ## Three-Field Contract
+
 Every check script must return exactly this JSON to stdout:
+
 ```json
 {
   "triggered": true,
@@ -25,7 +43,13 @@ On error:
 }
 ```
 
-## Script Template
+| Field | Type | Purpose |
+|-------|------|---------|
+| `triggered` | `bool` | Does the agent need to wake up? |
+| `context` | `string` | What to tell the agent (be specific — paths, values, counts) |
+| `state_update` | `object` | Data to merge into state.json for next run (flat, runner namespaces it) |
+
+## Script Structure
 
 ```python
 #!/usr/bin/env python3
@@ -54,26 +78,13 @@ def parse_args():
 
 
 def detect(params: dict, state: dict) -> dict:
-    """
-    Run the check. Return a Three-Field Contract result.
-    
-    - params: from checks.json for this check
-    - state: previous state from state.json (namespaced under this check's ID)
-    
-    Return: {"triggered": bool, "context": str, "state_update": dict}
-    """
+    """Run the check. Return a Three-Field Contract result."""
     result = {
         "triggered": False,
         "context": "",
         "state_update": {}
     }
-    
     # YOUR LOGIC HERE
-    # 1. Perform cheap local checks (no LLM, no API calls)
-    # 2. Compare against previous state to detect changes
-    # 3. If something needs attention, set triggered=True and describe it in context
-    # 4. Return state_update with any data needed for next run
-    
     return result
 
 
@@ -85,7 +96,7 @@ def main():
     except json.JSONDecodeError as e:
         print(json.dumps({"triggered": False, "context": "", "state_update": {}, "error": str(e)}))
         sys.exit(1)
-    
+
     result = detect(params, state)
     print(json.dumps(result))
 
@@ -95,69 +106,67 @@ if __name__ == "__main__":
 ```
 
 ## Rules
-1. **No external dependencies** — use only Python stdlib (os, json, subprocess, shutil, glob, re, pathlib, etc.)
-2. **Cheap checks only** — no LLM calls, no expensive API calls, no network requests unless absolutely necessary
-3. **Stateless scripts** — read state via `--state`, return updates via `state_update`. Never read/write state.json directly.
-4. **10-second budget** — scripts are killed after 10 seconds. Keep it fast.
-5. **Namespaced state** — the runner wraps your state_update under the check ID. Just return flat data.
-6. **Seen vs Processed** — for items that need agent action, track as `"seen"` in state. The runner will update to `"processed"` after the agent handles it. Only trigger on `"seen"` items.
-7. **Human-readable context** — the `context` string is passed directly to the agent. Be specific: include file paths, values, counts, sender names.
+
+1. **No external dependencies** — Python stdlib only (os, json, subprocess, shutil, glob, re, pathlib, datetime, etc.)
+2. **Cheap checks only** — no LLM calls, no expensive API calls, no heavy network requests
+3. **Stateless scripts** — read state via `--state`, return updates via `state_update`. Never read/write state.json directly
+4. **10-second budget** — scripts are killed after 10 seconds. Keep it fast
+5. **Namespaced state** — the runner wraps your state_update under the check ID. Return flat data only
+6. **Seen vs Processed** — for items needing agent action, track as `"seen"`. The runner updates to `"processed"` after handling. Only trigger on `"seen"` items
+7. **Specific context** — include file paths, values, counts, sender names in the context string
+
+## Steps
+
+1. Ask the user what they want to monitor if not already specified
+2. Create the check script in the `checks/` directory of the Pulse installation
+3. Write clean, commented Python using the template above
+4. Provide the `checks.json` entry to add:
+```json
+{
+  "id": "<descriptive_snake_case_id>",
+  "script": "<filename>.py",
+  "params": { ... }
+}
+```
+5. Test: `python3 checks/<filename>.py --params '{}' --state '{}'`
+6. Dry run: `python3 pulse.py --config checks.json --state state.json --dry-run`
 
 ## Examples
 
-### Detecting new files
+### File appearance detection
 ```python
 def detect(params, state):
     watch_path = os.path.expanduser(params.get("path", "/tmp"))
     known = state.get("items", {})
-    
-    current = set()
-    for entry in os.listdir(watch_path):
-        full = os.path.join(watch_path, entry)
-        if os.path.isdir(full):
-            current.add(entry)
-    
+    current = {e for e in os.listdir(watch_path) if os.path.isdir(os.path.join(watch_path, e))}
     new_items = current - set(known.keys())
-    
     if new_items:
         return {
             "triggered": True,
-            "context": f"{len(new_items)} new item(s) detected in {watch_path}",
-            "state_update": {
-                "items": {**known, **{k: "seen" for k in new_items}}
-            }
+            "context": f"{len(new_items)} new item(s) in {watch_path}: {', '.join(sorted(new_items))}",
+            "state_update": {"items": {**known, **{k: "seen" for k in new_items}}}
         }
-    
     return {"triggered": False, "context": "", "state_update": {"items": known}}
 ```
 
-### Checking a threshold
+### Threshold monitoring
 ```python
 def detect(params, state):
     threshold = params.get("limit", 90)
-    
     usage = shutil.disk_usage("/")
     percent = int((usage.used / usage.total) * 100)
-    
     if percent >= threshold:
         return {
             "triggered": True,
             "context": f"Disk / at {percent}% (threshold: {threshold}%)",
             "state_update": {"last_percent": percent}
         }
-    
     return {"triggered": False, "context": "", "state_update": {"last_percent": percent}}
 ```
 
-## After Creating
-1. Save the script to the `checks/` directory
-2. Remind the user to add an entry to `checks.json`:
-```json
-{
-  "id": "<check_id>",
-  "script": "<filename>.py",
-  "params": { ... }
-}
-```
-3. Test it: `python3 checks/<filename>.py --params '{}' --state '{}'`
-4. Run a dry test: `python3 pulse.py --config checks.json --state state.json --dry-run`
+## Pitfalls
+
+- Do NOT read state.json directly — always use `--state` argument
+- Do NOT use `print()` for anything except the final JSON result — use stderr for debug output
+- Do NOT import third-party packages — stdlib only
+- The `context` string is your only communication to the agent — make it count
