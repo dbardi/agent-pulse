@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "id": "inbox_monitor",
+      "script": "check_mail.py",
+      "params": {
+        "path": "~/mail/inbox"
+      }
+    },
+    {
+      "id": "system_health",
+      "script": "check_sys.py",
+      "params": {
+        "disk_limit": 90,
+        "processes": []
+      }
+    }
+  ]
+}

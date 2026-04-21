@@ -1,0 +1,30 @@
+# Runtime state
+state.json
+
+# Logs
+logs/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Sensitive paths (prevent leaking system layout)
+# These are examples — users should add their own
+.env
+secrets/
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
