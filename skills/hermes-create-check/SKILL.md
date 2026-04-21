@@ -1,15 +1,19 @@
 ---
 name: agent-pulse-create-check
-version: 1.0.0
-description: Create new check scripts for the Agent Pulse heartbeat framework using the Three-Field Contract
-tags: [agent-pulse, heartbeat, monitoring, check-creation]
+version: 1.1.0
+description: Create new check scripts for the Agent Pulse heartbeat framework using the Three-Field Contract. Use when asked to create a new sensor, check, or monitor for Agent Pulse.
+metadata:
+  hermes:
+    tags: [agent-pulse, heartbeat, monitoring, check-creation, sensors]
+    related_skills: [pulse-heartbeat-framework]
 ---
 
 # Agent Pulse — Create New Check
 
-Use this skill when asked to create a new sensor/check for the Agent Pulse heartbeat framework. Generates a Python script following the Three-Field Contract.
+Create Python check scripts for the Agent Pulse heartbeat framework following the Three-Field Contract.
 
 ## Trigger
+
 User says something like:
 - "Create a pulse check that monitors X"
 - "Add a new sensor for X"
@@ -17,6 +21,7 @@ User says something like:
 - "I want pulse to watch X"
 
 ## What You Need from the User
+
 1. What to monitor (file changes, API health, process status, log patterns, etc.)
 2. What should trigger an alert (threshold, presence/absence, change detection)
 3. Any params that should be configurable via checks.json
@@ -49,7 +54,7 @@ On error:
 | `context` | `string` | What to tell the agent (be specific — paths, values, counts) |
 | `state_update` | `object` | Data to merge into state.json for next run (flat, runner namespaces it) |
 
-## Script Structure
+## Script Template
 
 ```python
 #!/usr/bin/env python3
@@ -121,6 +126,7 @@ if __name__ == "__main__":
 2. Create the check script in the `checks/` directory of the Pulse installation
 3. Write clean, commented Python using the template above
 4. Provide the `checks.json` entry to add:
+
 ```json
 {
   "id": "<descriptive_snake_case_id>",
@@ -128,12 +134,14 @@ if __name__ == "__main__":
   "params": { ... }
 }
 ```
+
 5. Test: `python3 checks/<filename>.py --params '{}' --state '{}'`
 6. Dry run: `python3 pulse.py --config checks.json --state state.json --dry-run`
 
 ## Examples
 
 ### File appearance detection
+
 ```python
 def detect(params, state):
     watch_path = os.path.expanduser(params.get("path", "/tmp"))
@@ -150,6 +158,7 @@ def detect(params, state):
 ```
 
 ### Threshold monitoring
+
 ```python
 def detect(params, state):
     threshold = params.get("limit", 90)
