@@ -28,7 +28,7 @@ LOG_DIR = Path(__file__).parent / "logs"
 LOG_FILE = LOG_DIR / "heartbeat.log"
 
 SCRIPT_TIMEOUT = 10          # seconds per check script
-COOLDOWN_MINUTES = 15         # minimum minutes between agent invocations
+COOLDOWN_MINUTES = 10         # minimum minutes between agent invocations
 DAILY_CAP = 20                # max agent invocations per day
 MAX_RETRIES = 1               # retry failed items once before dead-lettering
 
@@ -181,7 +181,7 @@ def invoke_agent(contexts: list[dict], state: dict, dry_run: bool = False) -> bo
 
     # Build the command
     cmd = [
-        "hermes", "chat", "-q", prompt,
+        "hermes", "chat", "-Q", "-q", prompt,
         "--skills", "resend-email-setup,telegram-communication-protocol",
     ]
 

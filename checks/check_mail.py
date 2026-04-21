@@ -59,29 +59,34 @@ def detect(params: dict, state: dict) -> dict:
         return {"triggered": False, "context": "", "state_update": {}}
 
     # Build context by reading email.json from each new/unprocessed item
-    senders = []
-    subjects = []
+    PRIORITY_SENDERS = ["dbardi@gmail.com"]
+
+    email_data = []
     for item in sorted(trigger_items):
         email_file = os.path.join(inbox_path, item, "email.json")
+        sender = "unknown"
+        subject = "(no subject)"
         if os.path.isfile(email_file):
             try:
                 with open(email_file) as f:
                     data = json.load(f)
                 sender = data.get("from", "unknown")
                 subject = data.get("subject", "(no subject)")
-                senders.append(sender)
-                subjects.append(subject)
             except (json.JSONDecodeError, OSError):
-                senders.append("unknown")
-                subjects.append("(parse error)")
-        else:
-            senders.append("unknown")
-            subjects.append("(no email.json)")
+                sender = "unknown"
+                subject = "(parse error)"
+        email_data.append({"dir": item, "sender": sender, "subject": subject})
+
+    # Sort: priority senders first, then the rest by directory name
+    def is_priority_sender(sender):
+        return any(ps.lower() in sender.lower() for ps in PRIORITY_SENDERS)
+
+    email_data.sort(key=lambda e: (0 if is_priority_sender(e["sender"]) else 1, e["dir"]))
 
     # Build context string
     lines = [f"{len(trigger_items)} new/unprocessed email(s):"]
-    for i, item in enumerate(sorted(trigger_items)):
-        lines.append(f"  - From: {senders[i]}, Subject: {subjects[i]} (dir: {item})")
+    for i, em in enumerate(email_data):
+        lines.append(f"  - From: {em['sender']}, Subject: {em['subject']} (dir: {em['dir']})")
 
     context = "\n".join(lines)
 
