@@ -66,11 +66,12 @@ Every check script returns exactly three fields on stdout:
 ### Install
 
 ```bash
-cd ~/.hermes/heartbeat
+git clone https://github.com/dbardi/agent-pulse.git
+cd agent-pulse
 bash install.sh
 ```
 
-This creates the virtual environment, installs dependencies, and sets up a cron job (every 5 minutes by default).
+This creates the directory structure, virtual environment, and sets up a cron job (every 5 minutes by default).
 
 ### Configure
 
@@ -105,7 +106,7 @@ Edit `checks.json` to enable or disable sensors:
 python3 pulse.py
 
 # Or directly
-~/.hermes/heartbeat/venv/bin/python3 pulse.py
+./venv/bin/python3 pulse.py
 ```
 
 ### Add a new sensor
@@ -129,7 +130,7 @@ cp checks/template_check.py checks/check_mine.py
 ## Requirements
 
 - Python 3.11+
-- An AI agent that accepts CLI invocation (e.g., `hermes chat -q "..."`)
+- An AI agent with CLI invocation (e.g., `hermes chat -q "..."`, `claude -p "..."`, or any agent that accepts a prompt via shell)
 - Cron or systemd timer for scheduling
 
 ## License
